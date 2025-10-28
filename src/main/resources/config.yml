@@ -1,0 +1,9 @@
+# Backpacks Configuration
+# By SupaFloof Games, LLC
+
+# Allow backpacks to be placed in other backpacks (not recommended - can cause duplication bugs)
+allow-nested-backpacks: false
+
+# Material type for backpack item (default: BARREL)
+# Must be a valid Bukkit Material name
+backpack-item: BARREL
