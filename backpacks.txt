@@ -1,0 +1,177 @@
+=====================================
+BACKPACKS GUIDE
+=====================================
+A player's guide to portable storage
+
+By SupaFloof Games, LLC
+=====================================
+PAGE 1
+=====================================
+WHAT ARE BACKPACKS?
+
+Backpacks are portable storage containers.
+
+They hold items like a chest that you can carry and open anywhere.
+=====================================
+PAGE 2
+=====================================
+IDENTIFYING BACKPACKS
+
+Backpacks have:
+- Gold bold text name
+- Enchanted glow effect
+- Lore text showing capacity
+
+Two types exist:
+- 27 slots (standard)
+- 54 slots (upgraded)
+=====================================
+PAGE 3
+=====================================
+OPENING A BACKPACK
+
+1. Hold the backpack in your hand
+
+2. Right-click
+
+3. A storage GUI opens
+
+4. Move items in and out
+
+5. Close with ESC or inventory key
+=====================================
+PAGE 4
+=====================================
+WHEN YOU CLOSE
+
+You will see:
+"Backpack saved!"
+
+Your items are saved immediately.
+
+Each backpack stores its own items separately.
+=====================================
+PAGE 5
+=====================================
+STANDARD BACKPACK
+
+Name: Backpack
+Color: Gold
+Capacity: 27 slots
+
+Lore shows:
+"A portable storage container"
+"Capacity: 27 slots"
+"Right-click to open"
+=====================================
+PAGE 6
+=====================================
+UPGRADED BACKPACK
+
+Name: Backpack
+Color: Gold
+Capacity: 54 slots
+
+Lore shows:
+"A portable storage container"
+"Capacity: 54 slots"
+"✦ UPGRADED ✦"
+"Right-click to open"
+=====================================
+PAGE 7
+=====================================
+CAPACITY DOUBLER
+
+This is a paper item that upgrades backpacks.
+
+Name: Backpack Capacity Doubler
+Color: Aqua
+Enchanted glow
+
+Upgrades 27 slots to 54 slots
+=====================================
+PAGE 8
+=====================================
+HOW TO UPGRADE
+
+1. Have a 27-slot backpack
+2. Have a Capacity Doubler
+3. Pick up the doubler
+4. Right-click it onto the backpack
+
+Works in any inventory.
+=====================================
+PAGE 9
+=====================================
+UPGRADING RULES
+
+- Backpack must be alone (not stacked)
+- Can only upgrade once
+- Already 54-slot backpacks cannot be upgraded
+- Doubler is consumed
+=====================================
+PAGE 10
+=====================================
+AFTER UPGRADING
+
+You will see:
+"✦ Backpack upgraded to 54 slots! ✦"
+
+You will hear a level-up sound.
+
+All items inside stay in place.
+=====================================
+PAGE 11
+=====================================
+BACKPACK STORAGE
+
+Each backpack has a unique ID.
+
+Your items are separate from other players.
+
+Multiple backpacks each have their own storage.
+=====================================
+PAGE 12
+=====================================
+BACKPACKS IN BACKPACKS
+
+You cannot put backpacks inside other backpacks.
+
+If you try, you will see:
+"You cannot put a backpack inside another backpack!"
+=====================================
+PAGE 13
+=====================================
+USING MULTIPLE BACKPACKS
+
+You can own as many backpacks as you want.
+
+Each one stores different items.
+
+Organize them by purpose:
+- Mining supplies
+- Farming tools
+- Building blocks
+=====================================
+PAGE 14
+=====================================
+QUICK REFERENCE
+
+OPEN: Hold + Right-click
+
+UPGRADE: Right-click doubler onto backpack
+
+SIZES: 27 or 54 slots
+
+SAVES: Automatic on close
+=====================================
+PAGE 15
+=====================================
+END OF GUIDE
+
+Your backpack is ready to use.
+
+Happy adventuring!
+
+- SupaFloof Games, LLC
+=====================================
