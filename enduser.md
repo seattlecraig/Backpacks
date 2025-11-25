@@ -6,7 +6,7 @@ Backpacks are portable storage containers that you can carry in your inventory a
 
 ## Getting Your First Backpack
 
-Backpacks are typically given to you by server administrators or can be obtained through other means depending on your server's economy or quest systems. Ask your server admins how to get one!
+Backpacks can be found by opening Rewards keys in the lobby, or purchased using in game currency via the /shop command.  You can also aquire the backpack upgrade via the /shop command.
 
 ## How to Use Your Backpack
 
@@ -158,3 +158,7 @@ If you're having issues with backpacks:
 ---
 
 **Enjoy your portable storage and happy adventuring!** 🎒✨
+
+---
+
+**Made with ❤️ by SupaFloof Games, LLC**
