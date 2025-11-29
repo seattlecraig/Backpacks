@@ -101,7 +101,7 @@ public class Backpacks extends JavaPlugin implements Listener, TabCompleter {
      * Inner Map Value: ItemStack stored in that slot
      * 
      * This is loaded from individual YAML files on startup and kept in memory.
-     * Each backpack is saved to its own file: plugins/Backpacks/data/<UUID>.yml
+     * Each backpack is saved to its own file: plugins/Backpacks/playerdata/<UUID>.yml
      */
     private Map<String, Map<Integer, ItemStack>> backpackStorage = new HashMap<>();
     
@@ -664,7 +664,7 @@ public class Backpacks extends JavaPlugin implements Listener, TabCompleter {
      * Saves a single backpack's contents to its YAML file.
      * 
      * File structure:
-     * - Location: plugins/Backpacks/data/<UUID>.yml
+     * - Location: plugins/Backpacks/playerdata/<UUID>.yml
      * - Format: YAML with "slot.<index>" keys
      * - Example:
      *   slot:
@@ -673,7 +673,7 @@ public class Backpacks extends JavaPlugin implements Listener, TabCompleter {
      *     5: <ItemStack>
      * 
      * Process:
-     * 1. Ensure data/ directory exists (create if missing)
+     * 1. Ensure playerdata/ directory exists (create if missing)
      * 2. Create FileConfiguration object
      * 3. Store each ItemStack at "slot.<index>" path
      * 4. Save to file with error handling
@@ -688,14 +688,14 @@ public class Backpacks extends JavaPlugin implements Listener, TabCompleter {
      * @param contents Map of slot indices to ItemStacks
      */
     private void saveBackpackToFile(String backpackUUID, Map<Integer, ItemStack> contents) {
-        // Ensure the data directory exists
-        File backpacksDir = new File(getDataFolder(), "data");
+        // Ensure the playerdata directory exists
+        File backpacksDir = new File(getDataFolder(), "playerdata");
         if (!backpacksDir.exists()) {
             // mkdirs() creates parent directories if needed
             backpacksDir.mkdirs();
         }
         
-        // Create file path: plugins/Backpacks/data/<UUID>.yml
+        // Create file path: plugins/Backpacks/playerdata/<UUID>.yml
         File backpackFile = new File(backpacksDir, backpackUUID + ".yml");
         
         // Create YAML configuration object
@@ -723,8 +723,8 @@ public class Backpacks extends JavaPlugin implements Listener, TabCompleter {
      * 
      * Loading process:
      * 1. Clear existing backpackStorage map
-     * 2. Check if data/ directory exists (skip if not)
-     * 3. Find all .yml files in data/ directory
+     * 2. Check if playerdata/ directory exists (skip if not)
+     * 3. Find all .yml files in playerdata/ directory
      * 4. For each file:
      *    a. Extract UUID from filename
      *    b. Load YAML configuration
@@ -746,10 +746,10 @@ public class Backpacks extends JavaPlugin implements Listener, TabCompleter {
         // Clear any existing data (important for reload scenarios)
         backpackStorage.clear();
         
-        // Check if data directory exists
-        File backpacksDir = new File(getDataFolder(), "data");
+        // Check if playerdata directory exists
+        File backpacksDir = new File(getDataFolder(), "playerdata");
         if (!backpacksDir.exists()) {
-            getLogger().info("No data directory found, starting fresh");
+            getLogger().info("No playerdata directory found, starting fresh");
             return;
         }
         
