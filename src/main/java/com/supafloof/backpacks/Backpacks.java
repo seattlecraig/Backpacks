@@ -38,6 +38,7 @@ import java.util.stream.Collectors;
  * and can hold either a single chest (27 slots) or double chest (54 slots) worth of items.
  * 
  * Features:
+ * - Personal backpack accessible via /bp command (54 slots, requires backpacks.use)
  * - Backpack items using bundle visual with enchanted glow
  * - Single chest (27 slots) or double chest (54 slots) storage
  * - Doubler item (paper) to upgrade backpack capacity from 27 to 54 slots
@@ -48,13 +49,20 @@ import java.util.stream.Collectors;
  * - Tab completion for all commands
  * 
  * Commands:
+ * - /bp - Open your personal backpack (54 slots)
  * - /backpack help - Display help menu
  * - /backpack reload - Reload configuration
  * - /backpack give backpack <player> - Give a backpack (27 slots)
  * - /backpack give doubler <player> - Give a capacity doubler paper
  * 
+ * Permissions:
+ * - backpacks.use - Required for /bp personal backpack
+ * - backpacks.give - Required for /backpack give commands
+ * - backpacks.admin - Required for /backpack reload
+ * - No permission required - Using backpack items given via /backpack give
+ * 
  * @author SupaFloof Games, LLC
- * @version 1.0.0
+ * @version 1.1.0
  */
 public class Backpacks extends JavaPlugin implements Listener, TabCompleter {
     
@@ -102,6 +110,8 @@ public class Backpacks extends JavaPlugin implements Listener, TabCompleter {
      * 
      * This is loaded from individual YAML files on startup and kept in memory.
      * Each backpack is saved to its own file: plugins/Backpacks/playerdata/<UUID>.yml
+     * 
+     * Personal backpacks use the format: "personal-<PlayerUUID>"
      */
     private Map<String, Map<Integer, ItemStack>> backpackStorage = new HashMap<>();
     
@@ -135,6 +145,18 @@ public class Backpacks extends JavaPlugin implements Listener, TabCompleter {
      */
     private Map<UUID, String> openBackpackUUIDs = new HashMap<>();
     
+    /**
+     * Prefix used for personal backpack storage keys.
+     * Personal backpacks are stored as "personal-<PlayerUUID>" to distinguish
+     * them from item-based backpacks which use random UUIDs.
+     */
+    private static final String PERSONAL_BACKPACK_PREFIX = "personal-";
+    
+    /**
+     * Capacity of personal backpacks in slots (54 = double chest).
+     */
+    private static final int PERSONAL_BACKPACK_SIZE = 54;
+    
     // ==================== PLUGIN LIFECYCLE ====================
     
     /**
@@ -146,7 +168,7 @@ public class Backpacks extends JavaPlugin implements Listener, TabCompleter {
      * 3. Save default config.yml if it doesn't exist
      * 4. Load all backpack contents from data/ directory into memory
      * 5. Register event listeners for interactions and inventory management
-     * 6. Register command executor and tab completer
+     * 6. Register command executor and tab completer for both /backpack and /bp
      */
     @Override
     public void onEnable() {
@@ -183,6 +205,12 @@ public class Backpacks extends JavaPlugin implements Listener, TabCompleter {
         // Both are handled by this class (implements Listener and TabCompleter)
         getCommand("backpack").setExecutor(this);
         getCommand("backpack").setTabCompleter(this);
+        
+        // Register command executor and tab completer for /bp command
+        if (getCommand("bp") != null) {
+            getCommand("bp").setExecutor(this);
+            getCommand("bp").setTabCompleter(this);
+        }
         
         // Log successful enable to server console
         getLogger().info("Backpacks plugin enabled!");
@@ -607,6 +635,59 @@ public class Backpacks extends JavaPlugin implements Listener, TabCompleter {
     }
     
     /**
+     * Opens a player's personal backpack (54 slots).
+     * 
+     * Personal backpacks are stored using the player's UUID prefixed with "personal-"
+     * to distinguish them from item-based backpacks.
+     * 
+     * Opening process:
+     * 1. Generate personal backpack storage key from player UUID
+     * 2. Create Bukkit Inventory with 54 slots
+     * 3. Load items from backpackStorage map into inventory
+     * 4. Track session in activeBackpacks and openBackpackUUIDs
+     * 5. Open inventory GUI for player
+     * 6. Send confirmation message
+     * 
+     * @param player Player opening their personal backpack
+     */
+    private void openPersonalBackpack(Player player) {
+        // Generate the storage key for this player's personal backpack
+        String personalBackpackUUID = PERSONAL_BACKPACK_PREFIX + player.getUniqueId().toString();
+        
+        // Create Bukkit inventory GUI
+        // First parameter: null = no InventoryHolder (custom inventory)
+        // Second parameter: size (54 = double chest)
+        // Third parameter: title shown at top of GUI
+        String title = "Personal Backpack";
+        Inventory inv = Bukkit.createInventory(null, PERSONAL_BACKPACK_SIZE, title);
+        
+        // Load stored items into the inventory
+        Map<Integer, ItemStack> contents = backpackStorage.get(personalBackpackUUID);
+        if (contents != null) {
+            // Iterate through stored items and place them in correct slots
+            for (Map.Entry<Integer, ItemStack> entry : contents.entrySet()) {
+                // Safety check: only load items that fit in capacity
+                if (entry.getKey() < PERSONAL_BACKPACK_SIZE) {
+                    inv.setItem(entry.getKey(), entry.getValue());
+                }
+            }
+        } else {
+            // Initialize empty storage for new personal backpack
+            backpackStorage.put(personalBackpackUUID, new HashMap<>());
+        }
+        
+        // Track this backpack session for save/event handling
+        activeBackpacks.put(player.getUniqueId(), inv);
+        openBackpackUUIDs.put(player.getUniqueId(), personalBackpackUUID);
+        
+        // Open the GUI for the player
+        player.openInventory(inv);
+        
+        // Send confirmation message
+        player.sendMessage(Component.text("Opened personal backpack!", NamedTextColor.GREEN));
+    }
+    
+    /**
      * Saves a player's currently open backpack to persistent storage.
      * 
      * Save process:
@@ -738,6 +819,7 @@ public class Backpacks extends JavaPlugin implements Listener, TabCompleter {
      * it logs a warning but continues loading other files.
      * 
      * File naming: <UUID>.yml (e.g., "a1b2c3d4-e5f6-7890-abcd-ef1234567890.yml")
+     * Personal backpacks: "personal-<PlayerUUID>.yml"
      * 
      * Empty slots are not stored in YAML, so the deserialized map may be
      * sparse (e.g., only slots 0, 5, 10 might have items).
@@ -828,6 +910,9 @@ public class Backpacks extends JavaPlugin implements Listener, TabCompleter {
      * 3. Cancel event to prevent default behavior (e.g., block placement)
      * 4. Open backpack GUI for player
      * 
+     * NOTE: No permission check here - backpack items work for everyone.
+     * This allows /backpack give items to work without requiring permissions.
+     * 
      * Using HIGHEST priority ensures other plugins can handle the event
      * first (e.g., protection plugins might cancel it).
      * 
@@ -848,7 +933,8 @@ public class Backpacks extends JavaPlugin implements Listener, TabCompleter {
             return;
         }
         
-        // Handle backpack opening
+        // Handle backpack opening - NO PERMISSION CHECK
+        // Backpack items given via /backpack give work for all players
         if (isBackpack(item)) {
             // Cancel event to prevent default behavior
             event.setCancelled(true);
@@ -1015,15 +1101,17 @@ public class Backpacks extends JavaPlugin implements Listener, TabCompleter {
     // ==================== COMMANDS ====================
     
     /**
-     * Handles /backpack command execution.
+     * Handles /backpack and /bp command execution.
      * 
      * Command structure:
+     * - /bp (no args) - Open personal backpack (requires backpacks.use)
      * - /backpack help - Show help menu
      * - /backpack give <type> <player> - Give backpack or doubler
      * - /backpack reload - Reload configuration
      * 
      * Routing logic:
-     * - No arguments → Show help
+     * - /bp with no arguments → Open personal backpack (with permission check)
+     * - /backpack with no arguments → Show help
      * - "give" → Route to handleGive()
      * - "reload" → Route to handleReload()
      * - "help" → Show help
@@ -1039,7 +1127,28 @@ public class Backpacks extends JavaPlugin implements Listener, TabCompleter {
      */
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
-        // No arguments provided - show help menu
+        // Handle /bp with no arguments - open personal backpack
+        if (label.equalsIgnoreCase("bp") && args.length == 0) {
+            // Must be a player to use personal backpack
+            if (!(sender instanceof Player)) {
+                sender.sendMessage(Component.text("Only players can use personal backpacks!", NamedTextColor.RED));
+                return true;
+            }
+            
+            Player player = (Player) sender;
+            
+            // Check permission for personal backpack
+            if (!player.hasPermission("backpacks.use")) {
+                player.sendMessage(Component.text("You don't have permission to use personal backpacks!", NamedTextColor.RED));
+                return true;
+            }
+            
+            // Open the personal backpack
+            openPersonalBackpack(player);
+            return true;
+        }
+        
+        // No arguments provided for /backpack - show help menu
         if (args.length == 0) {
             sendHelp(sender);
             return true;
@@ -1071,6 +1180,7 @@ public class Backpacks extends JavaPlugin implements Listener, TabCompleter {
      * - Permission-based visibility (only shows accessible commands)
      * 
      * Permissions checked:
+     * - backpacks.use: Shows /bp command
      * - backpacks.give: Shows give commands
      * - backpacks.admin: Shows reload command
      * - No permission: Only shows help command
@@ -1088,6 +1198,12 @@ public class Backpacks extends JavaPlugin implements Listener, TabCompleter {
         
         // Separator border
         sender.sendMessage(Component.text("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━", NamedTextColor.GOLD));
+        
+        // Personal backpack command (requires backpacks.use permission)
+        if (sender.hasPermission("backpacks.use")) {
+            sender.sendMessage(Component.text("/bp", NamedTextColor.YELLOW)
+                .append(Component.text(" - Open your personal backpack (54 slots)", NamedTextColor.GRAY)));
+        }
         
         // Help command (always visible)
         sender.sendMessage(Component.text("/backpack help", NamedTextColor.YELLOW)
@@ -1243,10 +1359,14 @@ public class Backpacks extends JavaPlugin implements Listener, TabCompleter {
     // ==================== TAB COMPLETION ====================
     
     /**
-     * Provides tab completion suggestions for /backpack command.
+     * Provides tab completion suggestions for /backpack and /bp commands.
      * 
      * Completion logic by argument position:
      * 
+     * For /bp:
+     * - No completions (no arguments needed)
+     * 
+     * For /backpack:
      * Position 1 (subcommand):
      * - Always: "help"
      * - If has backpacks.give: "give"
@@ -1275,6 +1395,11 @@ public class Backpacks extends JavaPlugin implements Listener, TabCompleter {
     @Override
     public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
         List<String> completions = new ArrayList<>();
+        
+        // /bp has no tab completions (no arguments)
+        if (alias.equalsIgnoreCase("bp")) {
+            return completions;
+        }
         
         // First argument: subcommand
         if (args.length == 1) {

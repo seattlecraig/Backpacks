@@ -1,24 +1,26 @@
 name: Backpacks
 version: 1.0.0
 main: com.supafloof.backpacks.Backpacks
-api-version: 1.19
+api-version: '1.21'
 author: SupaFloof Games, LLC
-description: Portable storage containers with upgradeable capacity
+description: Portable storage containers with personal and item-based backpacks
 
 commands:
   backpack:
-    description: Main backpack command
-    usage: /backpack <help|give|reload>
-    aliases: [bp]
-    permission: backpacks.use
+    description: Backpack administration commands
+    usage: /<command> [help|give|reload]
+    aliases: [backpacks]
+  bp:
+    description: Open your personal backpack
+    usage: /<command>
 
 permissions:
   backpacks.use:
-    description: Allows using backpack commands
-    default: true
+    description: Allows using /bp to open personal backpack
+    default: false
   backpacks.give:
-    description: Allows giving backpacks and doublers to players
+    description: Allows giving backpack items to players
     default: op
   backpacks.admin:
-    description: Allows reloading configuration
+    description: Allows reloading plugin configuration
     default: op
