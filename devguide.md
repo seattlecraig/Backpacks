@@ -2,21 +2,21 @@
 
 ## Architecture Overview
 
-Backpacks is a single-file Paper/Spigot plugin that implements a portable storage system using Minecraft's inventory system and persistent data containers.
+Backpacks is a single-file Paper/Spigot plugin that implements a portable storage system using Minecraft's inventory system and persistent data containers. The plugin provides two distinct storage mechanisms: personal backpacks (command-based, per-player) and item-based backpacks (physical items that can be traded, stored, and used by any player).
 
 ### Core Design Principles
 
-1. **Single-file architecture** - All code in one class for simplicity
-2. **Immediate persistence** - Data is saved on every inventory close
-3. **UUID-based storage** - Each backpack has a unique identifier
-4. **Adventure API** - Modern text component system
-5. **NBT-based identification** - Items identified via PersistentDataContainer
+1. **Single-file architecture** - All code in one class (`Backpacks.java`) for simplicity and maintainability
+2. **Immediate persistence** - Data is saved to disk on every inventory close, preventing data loss
+3. **UUID-based storage** - Each backpack has a unique identifier linking items to their storage
+4. **Adventure API** - Modern text component system for all player-facing messages
+5. **NBT-based identification** - Items identified via PersistentDataContainer, immune to anvil renaming
 
 ## Technology Stack
 
 ### Required APIs
 - **Bukkit/Spigot API** - Core Minecraft server API
-- **Adventure API** (net.kyori) - Text components and formatting
+- **Adventure API** (net.kyori) - Text components and formatting (included in Paper)
 - **Java 17+** - Modern Java features
 
 ### Key Minecraft Systems Used
@@ -38,9 +38,31 @@ public class Backpacks extends JavaPlugin implements Listener, TabCompleter
 ```
 
 The plugin implements:
-- `JavaPlugin` - Standard plugin lifecycle
-- `Listener` - Event handling
+- `JavaPlugin` - Standard plugin lifecycle (onEnable, onDisable)
+- `Listener` - Event handling for inventory and player interactions
 - `TabCompleter` - Command tab completion
+
+## Two Backpack Systems
+
+The plugin provides two distinct backpack systems:
+
+### 1. Personal Backpacks (Command-Based)
+
+Accessed via the `/bp` command, personal backpacks are:
+- **Per-player**: One backpack per player, tied to their UUID
+- **Fixed capacity**: Always 54 slots (double chest size)
+- **Permission-gated**: Requires `backpacks.use` permission
+- **No physical item**: Exists only as stored data
+- **Storage key format**: `personal-{PlayerUUID}`
+
+### 2. Item-Based Backpacks
+
+Physical items that can be given, traded, dropped, and stored:
+- **Tradeable**: Can be given to other players, stored in chests
+- **No permission required**: Any player can use backpack items
+- **Upgradeable**: Start at 27 slots, upgradeable to 54 with a doubler
+- **Unique storage**: Each backpack item has its own UUID and storage
+- **Storage key format**: Random UUID (e.g., `a1b2c3d4-e5f6-7890-abcd-ef1234567890`)
 
 ## Data Storage Architecture
 
@@ -49,97 +71,100 @@ The plugin implements:
 #### 1. NBT Storage (on items)
 Stored on backpack ItemStacks via PersistentDataContainer:
 ```java
-// Keys
-backpackKey      - Boolean marker (identifies as backpack)
-backpackSizeKey  - Integer capacity (27 or 54)
-backpackUUIDKey  - String UUID (links to storage)
-doublerKey       - Boolean marker (identifies as doubler)
+// NamespacedKey objects
+backpackKey      // Boolean - identifies item as a backpack
+backpackSizeKey  // Integer - capacity (27 or 54)
+backpackUUIDKey  // String - links to storage file
+doublerKey       // Boolean - identifies item as a doubler
 ```
 
 #### 2. Memory Storage (runtime)
 ```java
 // Main storage map
 Map<String, Map<Integer, ItemStack>> backpackStorage
-// Outer: BackpackUUID -> Inner Map
-// Inner: SlotIndex -> ItemStack
+// Key: BackpackUUID (or "personal-{PlayerUUID}")
+// Value: Map of SlotIndex → ItemStack
 
 // Active session tracking
 Map<UUID, Inventory> activeBackpacks
-// PlayerUUID -> Open Inventory
+// Key: PlayerUUID
+// Value: Currently open Inventory
 
 Map<UUID, String> openBackpackUUIDs
-// PlayerUUID -> BackpackUUID
+// Key: PlayerUUID  
+// Value: BackpackUUID being viewed
 ```
 
 #### 3. File Storage (persistent)
 ```
-plugins/Backpacks/data/<UUID>.yml
+plugins/Backpacks/playerdata/<UUID>.yml
 ```
 
 YAML structure:
 ```yaml
 slot:
-  '0': <ItemStack>
-  '5': <ItemStack>
-  '10': <ItemStack>
+  '0': <serialized ItemStack>
+  '5': <serialized ItemStack>
+  '10': <serialized ItemStack>
 ```
+
+**Note:** The storage directory is `playerdata/`, not `data/`.
 
 ### Data Flow Diagram
 
 ```
-Player right-clicks backpack
+Player right-clicks backpack item
          ↓
-Read UUID from item NBT
+Read UUID from item NBT (backpack_uuid)
          ↓
-Load from backpackStorage Map
+Load contents from backpackStorage Map
          ↓
-Create Bukkit Inventory GUI
+Create Bukkit Inventory GUI (27 or 54 slots)
          ↓
-Track in activeBackpacks Map
+Track session in activeBackpacks + openBackpackUUIDs
          ↓
 Player modifies contents
          ↓
-Player closes inventory
+Player closes inventory (ESC or inventory key)
          ↓
-Save to backpackStorage Map
+InventoryCloseEvent fires
          ↓
-Write to <UUID>.yml file
+Clone all items, save to backpackStorage Map
+         ↓
+Write immediately to <UUID>.yml file
+         ↓
+Remove from tracking maps
 ```
 
 ## Key Systems
 
 ### 1. Item Creation System
 
-#### Backpack Creation
-```java
-private ItemStack createBackpack()
-```
+#### Backpack Creation (`createBackpack()`)
 
 **Process:**
-1. Create ItemStack with configured material
-2. Generate unique UUID (UUID.randomUUID())
-3. Build display name and lore with Adventure API
-4. Add UNBREAKING enchantment (visual glow)
-5. Hide enchantment tooltip
-6. Store NBT data (marker, size, UUID)
-7. Initialize empty storage map entry
+1. Create ItemStack with configured material (default: BARREL)
+2. Generate unique UUID via `UUID.randomUUID()`
+3. Build display name: "Backpack" in gold, bold, no italics
+4. Build lore with capacity and usage instructions
+5. Add UNBREAKING I enchantment (visual glow only)
+6. Hide enchantment text via ItemFlag.HIDE_ENCHANTS
+7. Store NBT data in PersistentDataContainer
+8. Initialize empty storage map entry
 
 **NBT Data:**
 - `backpack` = true (Boolean)
 - `backpack_size` = 27 (Integer)
 - `backpack_uuid` = "<uuid>" (String)
 
-#### Doubler Creation
-```java
-private ItemStack createDoubler()
-```
+#### Doubler Creation (`createDoubler()`)
 
 **Process:**
 1. Create PAPER ItemStack
-2. Build display name and lore
-3. Add enchantment glow
-4. Store NBT marker
-5. No UUID (doublers are consumable)
+2. Build display name: "Backpack Capacity Doubler" in aqua, bold
+3. Build lore explaining upgrade (27 → 54 slots)
+4. Add enchantment glow
+5. Store NBT marker (no UUID - doublers are consumable)
 
 **NBT Data:**
 - `doubler` = true (Boolean)
@@ -156,68 +181,69 @@ private String getBackpackUUID(ItemStack item)
 
 **Detection Logic:**
 1. Null check on ItemStack
-2. Check if has ItemMeta
+2. Check if hasItemMeta()
 3. Access PersistentDataContainer
-4. Check for specific NamespacedKey
+4. Check for specific NamespacedKey presence
 
 **Why NBT instead of lore/name?**
 - NBT survives anvil renaming
 - NBT cannot be manipulated by players
 - NBT is more performant than string parsing
-- NBT supports complex data types
+- NBT supports typed data (Boolean, Integer, String)
 
 ### 3. Inventory Management System
 
-#### Opening Backpacks
-```java
-private void openBackpack(Player player, ItemStack backpack)
-```
+#### Opening Item-Based Backpacks (`openBackpack()`)
 
 **Process:**
-1. Extract UUID from item
-2. Get capacity (27 or 54)
-3. Create Bukkit inventory: `Bukkit.createInventory(null, capacity, title)`
-4. Load items from storage map
-5. Track session in two maps:
+1. Extract UUID from item's PersistentDataContainer
+2. Validate UUID exists (error if corrupted)
+3. Get capacity from NBT (27 or 54)
+4. Create Bukkit inventory: `Bukkit.createInventory(null, capacity, title)`
+5. Load items from backpackStorage map into inventory slots
+6. Track session in both maps:
    - `activeBackpacks.put(playerUUID, inventory)`
    - `openBackpackUUIDs.put(playerUUID, backpackUUID)`
-6. Open GUI for player
+7. Open GUI for player
+8. Send confirmation message
 
 **Title Format:** `"Backpack (27 slots)"` or `"Backpack (54 slots)"`
 
-#### Saving Backpacks
-```java
-private void saveBackpackContents(Player player)
-private void saveBackpackToFile(String uuid, Map<Integer, ItemStack> contents)
-```
+#### Opening Personal Backpacks (`openPersonalBackpack()`)
 
 **Process:**
-1. Get player's open inventory and backpack UUID
-2. Iterate through all slots
-3. Clone non-empty ItemStacks (prevents reference issues)
-4. Build contents map (skip AIR items)
-5. Update in-memory storage
-6. Write to YAML file immediately
+1. Generate storage key: `"personal-" + player.getUniqueId().toString()`
+2. Create 54-slot Bukkit inventory with title "Personal Backpack"
+3. Load stored items from backpackStorage
+4. Track session in both maps
+5. Open GUI and send confirmation
 
-**Critical:** Items are cloned to prevent modifications to the inventory affecting stored data.
+#### Saving Backpacks (`saveBackpackContents()`)
+
+**Process:**
+1. Verify player has active backpack session
+2. Get Inventory and backpack UUID from tracking maps
+3. Iterate through all inventory slots
+4. Clone each non-empty ItemStack (prevents reference issues)
+5. Build contents map (skip AIR items)
+6. Update in-memory backpackStorage
+7. Write to YAML file immediately via `saveBackpackToFile()`
+
+**Critical:** Items are CLONED before storage to prevent modifications to the inventory affecting stored data or vice versa.
 
 ### 4. Upgrade System
 
-#### Upgrade Process
-```java
-private ItemStack upgradeBackpack(ItemStack backpack)
-```
+#### Upgrade Process (`upgradeBackpack()`)
 
 **Process:**
 1. Modify NBT: `backpack_size` = 54
-2. Update lore to reflect new capacity
-3. Add "✦ UPGRADED ✦" badge
+2. Rebuild lore with new capacity
+3. Add "✦ UPGRADED ✦" badge in light purple
 4. UUID remains unchanged (contents preserved)
 
-**Important:** This method only modifies the item, not the storage. The storage map already supports 54 slots, so no data migration is needed.
+**Important:** This method only modifies the item's metadata. The storage system already supports 54 slots, so existing items in slots 0-26 remain in place and slots 27-53 become available.
 
-#### Upgrade Detection
-Handled in `InventoryClickEvent`:
+#### Upgrade Detection (in InventoryClickEvent)
 ```java
 if (isDoubler(cursor) && isBackpack(clicked))
 ```
@@ -225,9 +251,10 @@ if (isDoubler(cursor) && isBackpack(clicked))
 **Validation:**
 1. Backpack not stacked (amount must be 1)
 2. Current capacity < 54
-3. Consume one doubler
-4. Apply upgrade
-5. Play sound and send message
+3. Consume one doubler from cursor
+4. Apply upgrade to clicked backpack
+5. Play ENTITY_PLAYER_LEVELUP sound (pitch 1.5f)
+6. Send success message
 
 ### 5. Event Handling System
 
@@ -237,15 +264,17 @@ if (isDoubler(cursor) && isBackpack(clicked))
 public void onPlayerInteract(PlayerInteractEvent event)
 ```
 
-**Triggers:** Right-click air or block with backpack
+**Triggers:** Right-click air or block while holding backpack item
 
 **Actions:**
-1. Detect right-click action
-2. Check if item is backpack
-3. Cancel event (prevent block placement)
+1. Verify action is RIGHT_CLICK_AIR or RIGHT_CLICK_BLOCK
+2. Check if held item is a backpack
+3. Cancel event (prevent block placement/interaction)
 4. Open backpack GUI
 
-**Priority:** HIGHEST ensures other plugins process first (protection plugins, etc.)
+**Priority:** HIGHEST ensures other plugins (protection, etc.) process first
+
+**No permission check:** Item-based backpacks work for all players
 
 #### InventoryClickEvent
 ```java
@@ -256,17 +285,18 @@ public void onInventoryClick(InventoryClickEvent event)
 **Handles two scenarios:**
 
 **Scenario 1: Doubler Application**
-- Cursor has doubler
-- Clicked slot has backpack
-- Validate and upgrade
-- Consume doubler
+- Cursor contains doubler
+- Clicked slot contains backpack
+- Validate backpack not stacked
+- Validate not already 54 slots
+- Upgrade backpack, consume doubler
 
 **Scenario 2: Nested Backpack Prevention**
-- Player has backpack open
-- Clicked inventory is active backpack
-- Cursor has backpack
-- Config disallows nesting
-- Cancel and notify
+- Player has backpack open (in activeBackpacks)
+- Clicked inventory is the active backpack
+- Cursor contains a backpack
+- Config `allow-nested-backpacks` is false
+- Cancel click and notify player
 
 #### InventoryCloseEvent
 ```java
@@ -275,55 +305,54 @@ public void onInventoryClose(InventoryCloseEvent event)
 ```
 
 **Process:**
-1. Check if closed inventory is tracked in activeBackpacks
-2. Save contents to storage
-3. Write to file
-4. Remove from tracking maps
-5. Send confirmation message
+1. Verify closer is a Player
+2. Check if player has entry in activeBackpacks
+3. Save contents to storage and disk
+4. Remove from activeBackpacks map
+5. Remove from openBackpackUUIDs map
+6. Send "Backpack saved!" confirmation
 
 ### 6. Command System
 
 #### Command Structure
 ```
-/backpack help
-/backpack give <backpack|doubler> <player>
-/backpack reload
+/bp                                    - Open personal backpack
+/backpack help                         - Show help menu
+/backpack give <backpack|doubler> <player>  - Give items
+/backpack reload                       - Reload configuration
 ```
 
-#### Command Handler
-```java
-@Override
-public boolean onCommand(CommandSender sender, Command command, String label, String[] args)
-```
+#### Command Handler (`onCommand()`)
 
-**Routing:**
-- No args → Show help
-- "give" → `handleGive()`
-- "reload" → `handleReload()`
-- "help" → Show help
-- Unknown → Show help
+**Routing logic:**
+- `/bp` with no args → Check player, check `backpacks.use` permission, open personal backpack
+- `/backpack` with no args → Show help
+- `/backpack give` → Route to `handleGive()`
+- `/backpack reload` → Route to `handleReload()`
+- `/backpack help` → Show help
+- Unknown subcommand → Show help
 
 #### Permission Checks
-```java
-if (!sender.hasPermission("backpacks.give")) {
-    // Deny and notify
-}
-```
+Permissions are checked in sub-handlers:
+- `handleGive()` checks `backpacks.give`
+- `handleReload()` checks `backpacks.admin`
+- Personal backpack checks `backpacks.use`
 
-Permissions checked in sub-handlers, not main router.
+#### Help Menu (`sendHelp()`)
 
-#### Tab Completion
-```java
-@Override
-public List<String> onTabComplete(...)
-```
+Permission-filtered display:
+- `backpacks.use` → Shows /bp command
+- `backpacks.give` → Shows give commands
+- `backpacks.admin` → Shows reload command
+- No permission → Shows help command (always visible)
 
-**Completion Logic:**
-- Args 1: Subcommands (filtered by permission)
-- Args 2: Item types (if "give")
-- Args 3: Player names (if "give <type>")
+#### Tab Completion (`onTabComplete()`)
 
-**Filtering:** Case-insensitive startsWith matching
+**Completion logic:**
+- `/bp` → Empty list (no arguments)
+- `/backpack` position 1 → Subcommands filtered by permission
+- `/backpack give` position 2 → "backpack", "doubler"
+- `/backpack give <type>` position 3 → Online player names
 
 ## Configuration System
 
@@ -332,6 +361,14 @@ public List<String> onTabComplete(...)
 saveDefaultConfig();  // Creates config.yml if missing
 reloadConfig();       // Reloads from disk
 getConfig();          // Access configuration
+```
+
+### Configuration Options
+
+```yaml
+# config.yml
+allow-nested-backpacks: false  # Prevent backpack-in-backpack
+backpack-item: BARREL          # Material for backpack items
 ```
 
 ### Reading Values
@@ -343,47 +380,44 @@ String materialName = getConfig().getString("backpack-item", "BARREL");
 boolean nested = getConfig().getBoolean("allow-nested-backpacks", false);
 ```
 
-### Material Validation
+### Material Validation (`getBackpackMaterial()`)
 ```java
 try {
     Material mat = Material.valueOf(materialName.toUpperCase());
     return mat;
 } catch (IllegalArgumentException e) {
-    getLogger().warning("Invalid material, using BARREL");
+    getLogger().warning("Invalid backpack-item: " + materialName + ", using BARREL");
     return Material.BARREL;
 }
 ```
 
 ## Lifecycle Management
 
-### Plugin Startup
-```java
-@Override
-public void onEnable()
-```
+### Plugin Startup (`onEnable()`)
 
 **Sequence:**
-1. Display console messages (green/magenta per standards)
-2. Initialize NamespacedKeys
-3. Save default config
-4. Load backpack storage from files
-5. Register event listener
-6. Register command executor and tab completer
+1. Display startup message (green text)
+2. Display author credit (light purple/magenta text)
+3. Initialize four NamespacedKey objects
+4. Save default config
+5. Load backpack storage from YAML files
+6. Register event listener
+7. Register command executors for `/backpack` and `/bp`
+8. Register tab completer
+9. Log successful enable
 
-### Plugin Shutdown
-```java
-@Override
-public void onDisable()
-```
+### Plugin Shutdown (`onDisable()`)
 
 **Sequence:**
-1. Iterate active backpacks
-2. Save each to file
-3. Close player inventories
-4. Clear tracking maps
-5. Display console message
+1. Iterate through all entries in activeBackpacks map
+2. For each player with open backpack:
+   - Save contents to file
+   - Force close their inventory
+3. Clear activeBackpacks map
+4. Clear openBackpackUUIDs map
+5. Log successful disable
 
-**Critical:** This ensures no data loss on server shutdown.
+**Critical:** This ensures no data loss on server shutdown, even if players have backpacks open.
 
 ## Extension Points
 
@@ -397,17 +431,26 @@ case "mynewcommand":
 // Implement handler
 private boolean handleMyNewCommand(CommandSender sender, String[] args) {
     // Permission check
+    if (!sender.hasPermission("backpacks.newperm")) {
+        sender.sendMessage(Component.text("No permission!", NamedTextColor.RED));
+        return true;
+    }
     // Validation
     // Logic
     // Feedback
     return true;
+}
+
+// Add to tab completion
+if (sender.hasPermission("backpacks.newperm")) {
+    completions.add("mynewcommand");
 }
 ```
 
 ### Adding New Item Types
 
 ```java
-// 1. Add NamespacedKey
+// 1. Add NamespacedKey field
 private NamespacedKey myItemKey;
 
 // 2. Initialize in onEnable()
@@ -416,8 +459,12 @@ myItemKey = new NamespacedKey(this, "myitem");
 // 3. Create item method
 private ItemStack createMyItem() {
     ItemStack item = new ItemStack(Material.SOMETHING);
-    // Set meta
+    ItemMeta meta = item.getItemMeta();
+    // Set display name, lore
+    // Add enchant glow if desired
+    PersistentDataContainer pdc = meta.getPersistentDataContainer();
     pdc.set(myItemKey, PersistentDataType.BOOLEAN, true);
+    item.setItemMeta(meta);
     return item;
 }
 
@@ -429,26 +476,13 @@ private boolean isMyItem(ItemStack item) {
 }
 ```
 
-### Adding Event Handlers
-
-```java
-@EventHandler
-public void onMyEvent(MyEvent event) {
-    // Check if involves backpack
-    if (isBackpack(event.getItem())) {
-        // Custom logic
-    }
-}
-```
-
 ### Adding Configuration Options
 
 ```java
-// 1. Add to config.yml default
-// 2. Read in code
+// 1. Add to default config.yml with comments
+// 2. Read value in code with default
 int myValue = getConfig().getInt("my-option", defaultValue);
-
-// 3. Document in comments
+// 3. Document in server admin guide
 ```
 
 ## Best Practices
@@ -457,26 +491,27 @@ int myValue = getConfig().getInt("my-option", defaultValue);
 
 1. **Console Messages:**
    - Green for startup/success
-   - Magenta for author credit
-   - Red for shutdown/errors
+   - Light purple/magenta for author credit
+   - Red for errors
    ```java
    Component.text("[Backpacks] Started!", NamedTextColor.GREEN)
+   Component.text("[Backpacks] By SupaFloof Games, LLC", NamedTextColor.LIGHT_PURPLE)
    ```
 
 2. **JavaDoc Comments:**
-   - Every public/private method
+   - Every method documented
    - Explain parameters and returns
-   - Document side effects
+   - Document side effects and important notes
 
 3. **Adventure API:**
    - Use Component instead of String for messages
-   - Explicitly disable italic on lore
+   - Explicitly disable italic on lore (Minecraft defaults to italic for custom lore)
    ```java
    .decoration(TextDecoration.ITALIC, false)
    ```
 
 4. **NBT Data:**
-   - Use PersistentDataContainer
+   - Use PersistentDataContainer exclusively
    - Never use deprecated NBT methods
    - Always specify data type explicitly
 
@@ -486,25 +521,25 @@ int myValue = getConfig().getInt("my-option", defaultValue);
    ```java
    contents.put(i, item.clone());
    ```
-   Prevents reference issues.
+   Prevents reference issues between inventory and storage.
 
 2. **Immediate File Saves:**
    ```java
    saveBackpackToFile(uuid, contents);
    ```
-   No batching - prevents data loss but may impact performance with thousands of saves per second.
+   No batching - prevents data loss on crashes.
 
-3. **Map Lookups:**
+3. **Early Returns:**
    ```java
    if (!activeBackpacks.containsKey(playerId)) return;
    ```
-   Early returns prevent unnecessary processing.
+   Prevents unnecessary processing.
 
 4. **Event Priority:**
    ```java
    @EventHandler(priority = EventPriority.HIGHEST)
    ```
-   Use appropriate priority for event cancellation.
+   Use HIGHEST for backpack opens so protection plugins run first.
 
 ### Security Considerations
 
@@ -519,10 +554,10 @@ int myValue = getConfig().getInt("my-option", defaultValue);
 2. **Nested Backpack Prevention:**
    ```java
    if (!getConfig().getBoolean("allow-nested-backpacks", false)) {
-       // Prevent
+       // Prevent placing backpack in backpack
    }
    ```
-   Prevents duplication exploits.
+   Prevents potential duplication exploits.
 
 3. **UUID Validation:**
    ```java
@@ -532,6 +567,13 @@ int myValue = getConfig().getInt("my-option", defaultValue);
    }
    ```
    Never trust NBT data completely.
+
+4. **Stack Size Validation:**
+   ```java
+   if (clicked.getAmount() > 1) {
+       // Prevent upgrade on stacked backpacks
+   }
+   ```
 
 ### Error Handling
 
@@ -544,7 +586,7 @@ int myValue = getConfig().getInt("my-option", defaultValue);
        e.printStackTrace();
    }
    ```
-   Log but don't crash - data is still in memory.
+   Log but don't crash - data is still safe in memory.
 
 2. **Null Checks:**
    ```java
@@ -560,130 +602,100 @@ int myValue = getConfig().getInt("my-option", defaultValue);
    ```
    Use sensible defaults for missing data.
 
-## Testing Considerations
+## Testing Checklist
 
-### Manual Testing Checklist
+### Manual Testing
 
-- [ ] Create new backpack
-- [ ] Open and close backpack
-- [ ] Add/remove items
-- [ ] Verify persistence (restart server)
-- [ ] Apply doubler to backpack
-- [ ] Attempt nested backpack (should fail)
-- [ ] Test with stacked backpack (doubler should fail)
-- [ ] Test permissions (give, reload)
-- [ ] Test tab completion
+- [ ] Create new backpack via `/backpack give backpack <player>`
+- [ ] Open and close item backpack (verify "Backpack saved!" message)
+- [ ] Add/remove items from backpack
+- [ ] Verify persistence (restart server, check items remain)
+- [ ] Apply doubler to backpack (verify upgrade message and sound)
+- [ ] Attempt doubler on already-upgraded backpack (should fail)
+- [ ] Attempt doubler on stacked backpacks (should fail)
+- [ ] Attempt to place backpack inside backpack (should fail by default)
+- [ ] Test `/bp` command with `backpacks.use` permission
+- [ ] Test `/bp` command without permission (should deny)
+- [ ] Test `/backpack give` without `backpacks.give` permission
+- [ ] Test `/backpack reload` with and without `backpacks.admin`
+- [ ] Verify tab completion shows permission-appropriate options
 - [ ] Test with different materials in config
-- [ ] Test with invalid config values
+- [ ] Test with invalid config values (should fallback gracefully)
+- [ ] Verify personal backpack storage is separate from item backpacks
 
 ### Edge Cases
 
-1. **Backpack UUID collision:** Extremely unlikely (UUID.randomUUID())
-2. **File corruption:** Individual files, isolated damage
-3. **Concurrent access:** Maps are not thread-safe but Bukkit is single-threaded
+1. **Backpack UUID collision:** Extremely unlikely with UUID.randomUUID()
+2. **File corruption:** Individual files isolate damage
+3. **Concurrent access:** Bukkit is single-threaded for events
 4. **Memory leaks:** Maps cleared on disable and close events
-5. **Item duplication:** Prevented by nested backpack check
-
-## Common Development Tasks
-
-### Adding a New Permission
-
-1. Define permission node (e.g., `backpacks.newfeature`)
-2. Check in command/event handler
-3. Document in permissions section
-4. Add to tab completion filter
-
-### Adding a New Configuration Option
-
-1. Add to default config.yml with comments
-2. Read value in code with default
-3. Apply validation if needed
-4. Document in server admin guide
-
-### Debugging
-
-Enable verbose logging:
-```java
-getLogger().info("Debug: " + variableName);
-```
-
-Check backpack UUID:
-```java
-getLogger().info("Backpack UUID: " + getBackpackUUID(item));
-```
-
-List active sessions:
-```java
-getLogger().info("Active backpacks: " + activeBackpacks.size());
-```
+5. **Server crash during save:** Immediate saves minimize window
+6. **Item duplication:** Prevented by nested backpack check
 
 ## API for Other Plugins
 
-While not officially an API, other plugins can interact with backpacks:
+While not an official API, other plugins can interact:
 
 ### Detecting Backpacks
 ```java
-// Check if item is a backpack (NBT-based)
 ItemStack item = player.getInventory().getItemInMainHand();
 if (item.hasItemMeta()) {
     PersistentDataContainer pdc = item.getItemMeta().getPersistentDataContainer();
     NamespacedKey key = new NamespacedKey(backpacksPlugin, "backpack");
     if (pdc.has(key, PersistentDataType.BOOLEAN)) {
         // It's a backpack!
+        
+        // Get capacity
+        NamespacedKey sizeKey = new NamespacedKey(backpacksPlugin, "backpack_size");
+        int capacity = pdc.getOrDefault(sizeKey, PersistentDataType.INTEGER, 27);
+        
+        // Get UUID
+        NamespacedKey uuidKey = new NamespacedKey(backpacksPlugin, "backpack_uuid");
+        String uuid = pdc.get(uuidKey, PersistentDataType.STRING);
     }
 }
 ```
 
-### Getting Commands
+### Giving via Commands
 ```java
-// Give backpack via other plugin
 Bukkit.dispatchCommand(Bukkit.getConsoleSender(), 
     "backpack give backpack " + playerName);
 ```
 
-## Future Enhancement Ideas
+## File Structure Summary
 
-### Potential Features
-1. **Backpack tiers:** Small (9), Medium (27), Large (54)
-2. **Color-coded backpacks:** Different materials/colors
-3. **Backpack rental system:** Time-limited backpacks
-4. **Shared backpacks:** Multi-player access (risky)
-5. **Auto-sort feature:** Organize contents automatically
-6. **Search feature:** Find items in backpack
-7. **Backpack preview:** See contents without opening
-8. **Database storage:** MySQL/SQLite instead of YAML
-9. **Backup backpack command:** Admin tool to view any backpack
-10. **Statistics:** Track usage, most stored item, etc.
-
-### Implementation Considerations
-- Database storage would improve scalability but add complexity
-- Shared backpacks would need concurrency locks
-- Tiers would need multiple item creation methods
-- Search would need inventory scanning API
+```
+plugins/Backpacks/
+├── config.yml                    # Plugin configuration
+└── playerdata/                   # Backpack storage directory
+    ├── <random-uuid>.yml         # Item-based backpack storage
+    ├── <random-uuid>.yml         # Item-based backpack storage
+    └── personal-<player-uuid>.yml # Personal backpack storage
+```
 
 ## Troubleshooting Development Issues
 
 ### Plugin Not Loading
 - Check Java version (17+)
-- Verify plugin.yml exists
-- Check for syntax errors
+- Verify plugin.yml exists and is valid
+- Check for syntax errors in main class
 - Review console for stack traces
 
 ### Items Not Saving
-- Verify PersistentDataContainer is being written
-- Check file permissions on data/ directory
-- Ensure saveBackpackToFile() is being called
+- Verify saveBackpackContents() is called on close
+- Check file permissions on playerdata/ directory
+- Ensure saveBackpackToFile() completes without exception
 - Look for exceptions in console
 
 ### NBT Data Not Persisting
 - Ensure setItemMeta() is called after modifying PDC
-- Verify NamespacedKey is initialized
+- Verify NamespacedKey is initialized in onEnable()
 - Check that item isn't being replaced without copying NBT
 
 ### Memory Leaks
-- Ensure maps are cleared on plugin disable
-- Check that event handlers don't accumulate references
+- Ensure maps are cleared in onDisable()
 - Verify inventory close events remove tracking entries
+- Check that event handlers don't accumulate references
 
 ---
 
@@ -698,11 +710,6 @@ Bukkit.dispatchCommand(Bukkit.getConsoleSender(),
 - [IntelliJ IDEA](https://www.jetbrains.com/idea/) - Recommended IDE
 - [Maven](https://maven.apache.org/) - Build tool
 - [BuildTools](https://www.spigotmc.org/wiki/buildtools/) - Get Spigot/Paper APIs
-
-### Community Resources
-- [SpigotMC Forums](https://www.spigotmc.org/forums/)
-- [Paper Discord](https://discord.gg/papermc)
-- [Bukkit Forums](https://bukkit.org/)
 
 ---
 

@@ -4,20 +4,43 @@
 
 Backpacks are portable storage containers that you can carry in your inventory and access anywhere! Think of them as personal chests that you can take with you on adventures.
 
-## Getting Your First Backpack
+There are two types of backpacks:
 
-Backpacks can be found by opening Rewards keys in the lobby, or purchased using in game currency via the /shop command.  You can also aquire the backpack upgrade via the /shop command.
+1. **Personal Backpack** - A 54-slot backpack you access with the `/bp` command (if your server has this enabled)
+2. **Item Backpacks** - Physical backpack items you can carry, trade, and store in chests
 
-## How to Use Your Backpack
+## Personal Backpack (/bp Command)
 
-### Opening Your Backpack
+If your server has enabled personal backpacks, you can access yours by typing:
+
+```
+/bp
+```
+
+This opens a 54-slot storage (double chest size) that's tied to your account. Your personal backpack:
+- Is always 54 slots
+- Cannot be traded or dropped
+- Is accessed only through the command
+- Requires the `backpacks.use` permission (ask your server admin if it's not working)
+
+## Item Backpacks
+
+Item backpacks are physical items you can hold, store, trade, and use anywhere.
+
+### Getting Your First Backpack
+
+Backpacks can be found by opening Rewards keys in the lobby, or purchased using in game currency via the /shop command. You can also acquire the backpack upgrade via the /shop command.
+
+### How to Use Your Backpack
+
+#### Opening Your Backpack
 
 1. Hold the backpack item in your hand
 2. **Right-click** (either in the air or on a block)
 3. A storage GUI will open showing your backpack's contents
 4. Move items in and out just like any chest!
 
-### Closing Your Backpack
+#### Closing Your Backpack
 
 Simply press **ESC** or your inventory key to close the backpack. You'll see a green "Backpack saved!" message confirming your items were stored safely.
 
@@ -25,7 +48,7 @@ Simply press **ESC** or your inventory key to close the backpack. You'll see a g
 
 ## Backpack Capacities
 
-Backpacks come in two sizes:
+Item backpacks come in two sizes:
 
 ### Standard Backpack (27 Slots)
 - Same storage as a single chest
@@ -90,10 +113,8 @@ Every backpack has its own unique storage! Even if two backpacks look identical,
 - Trading backpacks means trading their contents too
 - Don't accidentally drop your favorite backpack!
 
-### Backpacks Inside Backpacks?
-**By default, you CANNOT put backpacks inside other backpacks.** This prevents data issues and keeps your items safe. If you try, you'll see a red error message.
-
-> **Server Note:** Some servers may enable nested backpacks in their configuration, but this is not recommended due to potential issues.
+### Backpacks Inside Backpacks
+**You CANNOT put backpacks inside other backpacks.** This prevents data issues and keeps your items safe. If you try, you'll see a red error message: "You cannot put a backpack inside another backpack!"
 
 ### Safe Storage
 Your backpack contents are:
@@ -101,29 +122,6 @@ Your backpack contents are:
 - ✅ Protected even if the server crashes
 - ✅ Preserved through server restarts
 - ✅ Independent from other players' backpacks
-
-## Common Questions
-
-**Q: Can I lose items from my backpack?**
-A: No! Items are saved immediately when you close the backpack GUI. Your items are safe even if the server crashes right after you close it.
-
-**Q: Can other players access my backpack?**
-A: No! Only you can open your backpacks. Each backpack stores its own contents independently.
-
-**Q: How many backpacks can I have?**
-A: As many as you can fit in your inventory and chests! Each backpack has its own separate storage.
-
-**Q: What happens if I upgrade a backpack that's already full?**
-A: Great news! All your items stay in their original positions (slots 0-26), and you get 27 additional empty slots (27-53) for more storage.
-
-**Q: Can I rename my backpack with an anvil?**
-A: You can rename it, but the storage will still work! The backpack uses an invisible unique ID, not its name, to track its contents.
-
-**Q: What items can I NOT store in backpacks?**
-A: By default, you cannot store other backpacks inside a backpack. Everything else should work fine!
-
-**Q: Do backpacks take durability damage?**
-A: No! The enchanted glow is just for visual effect. Backpacks never break or wear out.
 
 ## Tips and Tricks
 
@@ -152,8 +150,9 @@ A: No! The enchanted glow is just for visual effect. Backpacks never break or we
 If you're having issues with backpacks:
 1. Make sure you're right-clicking with the backpack in your hand
 2. Check that you're clicking on a backpack item (should have gold text and glow)
-3. Ask your server administrators for assistance
-4. Report any bugs to the server staff
+3. For `/bp` command issues, ask your server admin if you have the required permission
+4. Ask your server administrators for assistance
+5. Report any bugs to the server staff
 
 ---
 

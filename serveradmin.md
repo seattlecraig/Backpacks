@@ -2,7 +2,10 @@
 
 ## Overview
 
-Backpacks is a lightweight, performant plugin that provides portable storage containers for your players. Each backpack functions as a personal inventory (27 or 54 slots) that players can access anywhere.
+Backpacks is a lightweight, performant plugin that provides two types of portable storage for your players:
+
+1. **Personal Backpacks** - Per-player storage accessed via the `/bp` command (54 slots, requires permission)
+2. **Item-Based Backpacks** - Physical items that can be given, traded, and used by any player (27 or 54 slots)
 
 ## Requirements
 
@@ -23,13 +26,13 @@ On first startup, you'll see:
 ```
 [Backpacks] Backpacks Started!
 [Backpacks] By SupaFloof Games, LLC
-[Backpacks] No data directory found, starting fresh
+[Backpacks] No playerdata directory found, starting fresh
 [Backpacks] Backpacks plugin enabled!
 ```
 
 The plugin will create:
 - `plugins/Backpacks/config.yml` - Configuration file
-- `plugins/Backpacks/data/` - Directory for backpack storage files
+- `plugins/Backpacks/playerdata/` - Directory for backpack storage files
 
 ## Configuration
 
@@ -52,7 +55,7 @@ backpack-item: BARREL
 #### allow-nested-backpacks
 - **Type:** Boolean
 - **Default:** `false`
-- **Description:** Controls whether players can place backpacks inside other backpacks
+- **Description:** Controls whether players can place backpack items inside other backpacks
 - **⚠️ Warning:** Setting this to `true` is NOT RECOMMENDED as it can potentially cause duplication exploits
 - **Use Case:** Keep this `false` unless you have a specific reason and understand the risks
 
@@ -87,13 +90,14 @@ Configuration changes do NOT affect:
 
 | Command | Description | Permission |
 |---------|-------------|------------|
+| `/bp` | Open your personal backpack (54 slots) | `backpacks.use` |
 | `/backpack help` | Show help menu | None (default) |
 
 ### Admin Commands
 
 | Command | Description | Permission | Usage |
 |---------|-------------|------------|-------|
-| `/backpack give backpack <player>` | Give a backpack (27 slots) | `backpacks.give` | `/backpack give backpack Notch` |
+| `/backpack give backpack <player>` | Give a backpack item (27 slots) | `backpacks.give` | `/backpack give backpack Notch` |
 | `/backpack give doubler <player>` | Give a capacity doubler | `backpacks.give` | `/backpack give doubler Steve` |
 | `/backpack reload` | Reload configuration | `backpacks.admin` | `/backpack reload` |
 
@@ -121,13 +125,17 @@ Configuration changes do NOT affect:
 
 | Permission | Description | Default | Recommended For |
 |-----------|-------------|---------|-----------------|
+| `backpacks.use` | Access personal backpack via /bp | OP | All players (if desired) |
 | `backpacks.give` | Give backpacks and doublers to players | OP | Admins, Moderators |
 | `backpacks.admin` | Reload configuration | OP | Server Admins |
 
 ### Setting Up Permissions
 
-Using LuckPerms:
+**Using LuckPerms:**
 ```bash
+# Give all players access to personal backpacks
+/lp group default permission set backpacks.use true
+
 # Give admin permissions
 /lp group admin permission set backpacks.give true
 /lp group admin permission set backpacks.admin true
@@ -136,18 +144,21 @@ Using LuckPerms:
 /lp group moderator permission set backpacks.give true
 ```
 
-Using PermissionsEx:
+**Using PermissionsEx:**
 ```bash
+/pex group default add backpacks.use
 /pex group admin add backpacks.give
 /pex group admin add backpacks.admin
 ```
 
 ### Default Permissions
 
-By default, only server operators (OPs) can use `/backpack give` and `/backpack reload`. All players can:
-- Open their backpacks (no permission required)
-- Use capacity doublers (no permission required)
-- View help menu (no permission required)
+By default, only server operators (OPs) have all permissions. Players with no permissions can:
+- Use backpack items they've obtained (no permission required)
+- Use capacity doublers they've obtained (no permission required)
+- View the help menu (no permission required)
+
+**Note:** Item-based backpacks require NO permissions to use. Once a player has a backpack item, they can open it regardless of their permissions. Only the `/bp` personal backpack command requires the `backpacks.use` permission.
 
 ## Data Storage
 
@@ -155,19 +166,21 @@ By default, only server operators (OPs) can use `/backpack give` and `/backpack 
 
 Backpacks uses a **file-based storage system** with individual YAML files for each backpack.
 
-**Location:** `plugins/Backpacks/data/`
+**Location:** `plugins/Backpacks/playerdata/`
 
-**File Format:** `<UUID>.yml` (e.g., `a1b2c3d4-e5f6-7890-abcd-ef1234567890.yml`)
+**File Naming:**
+- Item-based backpacks: `<random-UUID>.yml` (e.g., `a1b2c3d4-e5f6-7890-abcd-ef1234567890.yml`)
+- Personal backpacks: `personal-<player-UUID>.yml` (e.g., `personal-12345678-abcd-1234-5678-ef1234567890.yml`)
 
 ### Storage Architecture
 
 ```
 plugins/Backpacks/
-├── config.yml           # Plugin configuration
-└── data/                # Backpack storage directory
-    ├── <uuid-1>.yml     # Backpack 1 contents
-    ├── <uuid-2>.yml     # Backpack 2 contents
-    └── <uuid-3>.yml     # Backpack 3 contents
+├── config.yml                         # Plugin configuration
+└── playerdata/                        # Backpack storage directory
+    ├── <uuid-1>.yml                   # Item backpack 1 contents
+    ├── <uuid-2>.yml                   # Item backpack 2 contents
+    └── personal-<player-uuid>.yml     # Player's personal backpack
 ```
 
 ### Example Backpack File
@@ -191,7 +204,7 @@ slot:
 
 ✅ **Individual files** prevent total data loss if one file corrupts
 ✅ **Immediate saves** ensure no data loss on crashes
-✅ **Easy backup** - just copy the data folder
+✅ **Easy backup** - just copy the playerdata folder
 ✅ **Easy restore** - replace individual UUID files if needed
 ✅ **Human readable** YAML format for debugging
 
@@ -202,12 +215,12 @@ slot:
 **Full Backup:**
 ```bash
 # Stop server or ensure no backpacks are being modified
-cp -r plugins/Backpacks/data /path/to/backup/backpacks-data-backup
+cp -r plugins/Backpacks/playerdata /path/to/backup/backpacks-playerdata-backup
 ```
 
 **Individual Backpack Backup:**
 ```bash
-cp plugins/Backpacks/data/<uuid>.yml /path/to/backup/
+cp plugins/Backpacks/playerdata/<uuid>.yml /path/to/backup/
 ```
 
 ### Restoring
@@ -215,15 +228,15 @@ cp plugins/Backpacks/data/<uuid>.yml /path/to/backup/
 **Full Restore:**
 ```bash
 # Stop server first
-rm -rf plugins/Backpacks/data
-cp -r /path/to/backup/backpacks-data-backup plugins/Backpacks/data
+rm -rf plugins/Backpacks/playerdata
+cp -r /path/to/backup/backpacks-playerdata-backup plugins/Backpacks/playerdata
 # Start server
 ```
 
 **Individual Backpack Restore:**
 ```bash
 # Can be done while server is running if backpack is not open
-cp /path/to/backup/<uuid>.yml plugins/Backpacks/data/
+cp /path/to/backup/<uuid>.yml plugins/Backpacks/playerdata/
 ```
 
 ### Automated Backup Script Example
@@ -234,7 +247,7 @@ cp /path/to/backup/<uuid>.yml plugins/Backpacks/data/
 DATE=$(date +%Y-%m-%d)
 BACKUP_DIR="/backups/minecraft/backpacks"
 mkdir -p "$BACKUP_DIR"
-cp -r /path/to/server/plugins/Backpacks/data "$BACKUP_DIR/backpacks-$DATE"
+cp -r /path/to/server/plugins/Backpacks/playerdata "$BACKUP_DIR/backpacks-$DATE"
 # Keep only last 7 days
 find "$BACKUP_DIR" -name "backpacks-*" -mtime +7 -delete
 ```
@@ -250,11 +263,6 @@ Backpacks can be integrated into your server economy. Here are some approaches:
 
 ### Shop Plugin Integration
 
-**Example with ChestShop:**
-```
-Create a shop sign selling backpack items. Use /backpack give to stock the shop chest.
-```
-
 **Example with ShopGUI+:**
 ```yaml
 # In ShopGUI+ config
@@ -265,12 +273,13 @@ items:
     buyPrice: 5000
     commands:
       - "backpack give backpack %player%"
-```
-
-**Example with EssentialsX:**
-```yaml
-# worth.yml
-BARREL: 5000  # If you create custom worth for backpack items
+  
+  doubler:
+    material: PAPER
+    name: "&b&lCapacity Doubler"
+    buyPrice: 2500
+    commands:
+      - "backpack give doubler %player%"
 ```
 
 ### Quest/Reward Integration
@@ -282,16 +291,16 @@ reward_commands:
   - "backpack give doubler %player%"
 ```
 
-## Economy Examples
+### Economy Examples
 
-### Starter Kit
+**Starter Kit:**
 ```yaml
 # In your kit plugin
 starter_kit:
   - backpack give backpack %player%
 ```
 
-### Vote Rewards
+**Vote Rewards:**
 ```yaml
 # In Votifier config
 vote_rewards:
@@ -300,7 +309,7 @@ vote_rewards:
       - "backpack give doubler %player%"
 ```
 
-### Donor Perks
+**Donor Perks:**
 ```yaml
 # Give upgraded backpacks to donors
 - backpack give backpack %player%
@@ -311,20 +320,20 @@ vote_rewards:
 
 ### Resource Usage
 
-**CPU:** Minimal - Events only process on player interaction
-**RAM:** ~10-50KB per backpack in memory (depends on contents)
-**Disk I/O:** Write operations only when backpacks are closed
+- **CPU:** Minimal - Events only process on player interaction
+- **RAM:** ~10-50KB per backpack in memory (depends on contents)
+- **Disk I/O:** Write operations only when backpacks are closed
 
 ### Performance Tips
 
-1. **Data folder on SSD:** Place the data folder on an SSD for faster saves
+1. **Data folder on SSD:** Place the playerdata folder on an SSD for faster saves
 2. **Backup timing:** Schedule backups during low-population hours
-3. **Monitor file count:** Thousands of backpack files are fine, but keep the data folder organized
+3. **Monitor file count:** Thousands of backpack files are fine, but keep organized
 
 ### Expected Performance
 
 - **Backpack open/close:** < 1ms per operation
-- **Doubler upgrade:** Instant (client-side only)
+- **Doubler upgrade:** Instant (modifies item metadata only)
 - **Plugin startup:** Load time scales with number of backpacks
   - 100 backpacks: ~50ms
   - 1000 backpacks: ~500ms
@@ -336,37 +345,33 @@ vote_rewards:
 
 #### Players can't open backpacks
 **Check:**
-- Is the item actually a backpack? (Should have gold text and glow)
+- Is the item actually a backpack? (Should have gold text and enchant glow)
 - Are there any conflicting plugins preventing right-click?
 - Check console for errors
+
+#### Personal backpack (/bp) not working
+**Check:**
+- Does the player have the `backpacks.use` permission?
+- Is the player typing `/bp` (not `/backpack`)?
+- Check console for permission errors
 
 #### Backpack contents not saving
 **Check:**
 - Do you see "Backpack saved!" message when closing?
-- Check file permissions on `plugins/Backpacks/data/` directory
+- Check file permissions on `plugins/Backpacks/playerdata/` directory
 - Look for errors in console during save
 
 #### Doubler not working
 **Check:**
 - Is the backpack stacked? (Must be quantity 1)
 - Is the backpack already 54 slots?
-- Are you right-clicking onto the backpack (not just clicking)?
+- Are you right-clicking the doubler onto the backpack (not just clicking)?
 
 #### "Invalid backpack-item" warning
 **Fix:**
 - Check config.yml for typos in material name
 - Use valid Bukkit material names (all caps, underscores)
 - Valid examples: `BARREL`, `CHEST`, `ENDER_CHEST`, `BUNDLE`
-
-### Debug Mode
-
-Enable debug logging in your server.properties or startup script:
-```properties
-# paper.yml or spigot.yml
-verbose: true
-```
-
-Then check console output when issues occur.
 
 ### Getting Help
 
@@ -381,12 +386,12 @@ Then check console output when issues occur.
 ### Regular Maintenance
 
 **Weekly:**
-- Check data folder size
+- Check playerdata folder size
 - Verify backups are working
 - Review any console warnings
 
 **Monthly:**
-- Clean up orphaned backpack files (from deleted accounts)
+- Clean up orphaned backpack files (from deleted/old accounts if desired)
 - Review and optimize backup retention
 
 **After Major Updates:**
@@ -400,10 +405,10 @@ To remove backpacks from players who haven't logged in for months:
 
 ```bash
 # Find backpack files older than 90 days
-find plugins/Backpacks/data -name "*.yml" -mtime +90
+find plugins/Backpacks/playerdata -name "*.yml" -mtime +90
 
-# Delete after verification
-find plugins/Backpacks/data -name "*.yml" -mtime +90 -delete
+# Delete after verification (USE WITH CAUTION)
+find plugins/Backpacks/playerdata -name "*.yml" -mtime +90 -delete
 ```
 
 **Warning:** Only delete if you're certain players won't return!
@@ -417,7 +422,7 @@ find plugins/Backpacks/data -name "*.yml" -mtime +90 -delete
 
 ### Data Security
 - Regular backups prevent data loss
-- File permissions should prevent player access to data folder
+- File permissions should prevent player access to playerdata folder
 - Consider encrypting backups if storing sensitive data
 
 ### Exploit Prevention
@@ -443,12 +448,22 @@ command /starterpack:
         execute console command "backpack give backpack %player%"
 ```
 
-### Multiple Backpack Tiers
+### Personal Backpack Access Control
 
-You can simulate tiers by controlling when players get doublers:
+Control who can access personal backpacks via `/bp`:
 
-**Tier 1:** Standard backpack (27 slots) - Given to all players
-**Tier 2:** Upgraded backpack (54 slots) - Requires doubler from shop/quest
+**All players:**
+```bash
+/lp group default permission set backpacks.use true
+```
+
+**VIP only:**
+```bash
+/lp group vip permission set backpacks.use true
+```
+
+**Disabled (item backpacks only):**
+Don't grant `backpacks.use` to anyone - players can still use item-based backpacks.
 
 ## Migration & Updates
 
@@ -459,8 +474,9 @@ You can simulate tiers by controlling when players get doublers:
 3. Start the server
 4. Run `/backpack reload` if configuration format changed
 
-### No data loss on updates
-Backpack data files are compatible across versions.
+### Data Compatibility
+
+Backpack data files are compatible across versions. No migration needed.
 
 ---
 
@@ -468,21 +484,23 @@ Backpack data files are compatible across versions.
 
 ### Essential Commands
 ```bash
-/backpack give backpack <player>  # Give backpack
+/bp                               # Open personal backpack (needs backpacks.use)
+/backpack give backpack <player>  # Give backpack item
 /backpack give doubler <player>   # Give doubler
-/backpack reload                   # Reload config
+/backpack reload                  # Reload config
 ```
 
 ### Essential Permissions
 ```
+backpacks.use    # Personal backpack (/bp)
 backpacks.give   # Give items
 backpacks.admin  # Admin commands
 ```
 
 ### File Locations
 ```
-plugins/Backpacks/config.yml    # Configuration
-plugins/Backpacks/data/*.yml    # Backpack storage
+plugins/Backpacks/config.yml         # Configuration
+plugins/Backpacks/playerdata/*.yml   # Backpack storage
 ```
 
 ### Support

@@ -5,12 +5,26 @@
 Backpacks is a lightweight, performant Paper/Spigot plugin that gives your players the ability to carry portable storage containers anywhere they go. Perfect for survival servers, RPG servers, and any server that wants to give players more inventory management options.
 
 [![License](https://img.shields.io/badge/license-Custom-blue.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/version-1.0.0-green.svg)]()
+[![Version](https://img.shields.io/badge/version-1.1.0-green.svg)]()
 [![Minecraft](https://img.shields.io/badge/minecraft-1.19+-orange.svg)]()
 
 ---
 
 ## ✨ Features
+
+### 🎒 Two Backpack Systems
+
+**Personal Backpacks** - Per-player storage via `/bp` command
+- 54 slots (double chest size)
+- Permission-based access
+- One per player, always available
+- Perfect for VIP perks or server-wide access
+
+**Item-Based Backpacks** - Physical items players can carry and trade
+- Start at 27 slots, upgradeable to 54
+- No permission required to use
+- Can be stored, traded, dropped
+- Perfect for economy integration and rewards
 
 ### 🎨 Beautiful Visual Design
 - **Enchanted glow effect** on all backpack items for easy identification
@@ -42,7 +56,7 @@ Backpacks is a lightweight, performant Paper/Spigot plugin that gives your playe
 - **Persistent** - backpack contents never disappear
 
 ### 🛠️ Admin-Friendly
-- **Easy commands** - `/backpack give backpack <player>` and that's it!
+- **Easy commands** - `/bp` for personal, `/backpack give` for items
 - **Permission system** - integrates with LuckPerms, PermissionsEx, etc.
 - **Reload support** - change config without restarting server
 - **Tab completion** - all commands have helpful tab completion
@@ -71,7 +85,10 @@ We've created comprehensive documentation for everyone:
 ### First Steps
 
 ```bash
-# Give yourself a backpack
+# Open your personal backpack (requires backpacks.use permission)
+/bp
+
+# Give yourself a backpack item
 /backpack give backpack YourName
 
 # Give yourself some doublers to upgrade
@@ -83,6 +100,10 @@ We've created comprehensive documentation for everyone:
 
 ### For Players
 
+**Personal Backpack:**
+1. Type `/bp` to open your personal 54-slot backpack
+
+**Item Backpacks:**
 1. Hold the backpack in your hand
 2. Right-click to open
 3. Manage items like any chest
@@ -113,8 +134,9 @@ Simple, clean, and easy to understand. That's how configuration should be!
 
 | Command | Description | Permission |
 |---------|-------------|------------|
+| `/bp` | Open personal backpack (54 slots) | `backpacks.use` |
 | `/backpack help` | Show help menu | None |
-| `/backpack give backpack <player>` | Give a backpack | `backpacks.give` |
+| `/backpack give backpack <player>` | Give a backpack item | `backpacks.give` |
 | `/backpack give doubler <player>` | Give capacity doubler | `backpacks.give` |
 | `/backpack reload` | Reload configuration | `backpacks.admin` |
 
@@ -122,14 +144,15 @@ All commands have **tab completion** for ease of use!
 
 ---
 
-## 🔐 Permissions
+## 🔑 Permissions
 
 | Permission | Description | Default |
 |-----------|-------------|---------|
+| `backpacks.use` | Open personal backpack via /bp | OP |
 | `backpacks.give` | Give backpacks and doublers | OP |
 | `backpacks.admin` | Reload configuration | OP |
 
-**Players don't need any permissions** to use backpacks they've obtained!
+**Players don't need any permissions** to use backpack items they've obtained!
 
 ---
 
@@ -146,7 +169,7 @@ Backpack Item (BARREL with glow)
     ├─ backpack_size: 27 or 54
     └─ backpack_uuid: "a1b2c3d4-..."
          ↓ Links to Storage File
-    plugins/Backpacks/data/a1b2c3d4-....yml
+    plugins/Backpacks/playerdata/a1b2c3d4-....yml
          ↓ Contains Inventory
     slot.0: DIAMOND_PICKAXE
     slot.5: GOLDEN_APPLE x16
@@ -169,18 +192,36 @@ Unlike some plugins that batch saves, Backpacks saves **immediately** when you c
 - **Organize your items** with multiple backpacks for different purposes
 - **Never lose items** thanks to instant saves and crash protection
 - **Simple to use** - if you can right-click, you can use backpacks!
+- **Personal storage** always available with `/bp` command
 
 ### For Server Admins
 - **Easy to install** - drop in plugins folder and restart
 - **Easy to configure** - only 2 config options, both optional
 - **Easy to maintain** - automatic backups via simple file copies
 - **Easy to integrate** - works with economy plugins, shops, quests, etc.
+- **Flexible permissions** - control personal vs item backpacks separately
 
 ### For Developers
 - **Clean code** - extensively commented for easy understanding
 - **Single-file** - no complex multi-class architecture to navigate
 - **Modern APIs** - uses Adventure API and PersistentDataContainer
 - **Extensible** - clear extension points for adding features
+
+---
+
+## 📊 Comparison
+
+| Feature | Backpacks | Other Plugins |
+|---------|-----------|---------------|
+| Personal + Item backpacks | ✅ | ⚠️ (usually one or other) |
+| Individual storage files | ✅ | ❌ (single database) |
+| Instant saves | ✅ | ❌ (batched) |
+| Visual enchantment glow | ✅ | ⚠️ (some) |
+| Tab completion | ✅ | ⚠️ (some) |
+| Single-file codebase | ✅ | ❌ |
+| Extensive documentation | ✅ | ⚠️ (some) |
+| Zero dependencies | ✅ | ❌ |
+| Nested backpack prevention | ✅ | ❌ |
 
 ---
 
@@ -199,8 +240,8 @@ Unlike some plugins that batch saves, Backpacks saves **immediately** when you c
 
 ### Storage System
 - **Format:** Individual YAML files per backpack
-- **Location:** `plugins/Backpacks/data/`
-- **Naming:** `<UUID>.yml` (e.g., `a1b2c3d4-e5f6-7890-abcd-ef1234567890.yml`)
+- **Location:** `plugins/Backpacks/playerdata/`
+- **Naming:** `<UUID>.yml` for items, `personal-<PlayerUUID>.yml` for personal
 - **Benefits:** Isolated corruption, easy backup, human-readable
 
 ---
@@ -211,16 +252,19 @@ Unlike some plugins that batch saves, Backpacks saves **immediately** when you c
 - Give backpacks as starter kits
 - Sell doublers in shops for progression
 - Reward backpacks for achievements
+- Enable `/bp` for all players for convenience
 
 ### RPG Servers
 - Different backpack tiers for different classes
 - Quest rewards include upgraded backpacks
 - Collector NPCs sell specialty backpacks
+- VIP personal backpack access via `/bp`
 
 ### Economy Servers
 - Backpacks as premium shop items
 - Doubler upgrades as donor perks
 - Rental backpacks for temporary storage
+- Personal backpack as VIP feature
 
 ### Creative Servers
 - Quick access to building supplies
@@ -229,76 +273,16 @@ Unlike some plugins that batch saves, Backpacks saves **immediately** when you c
 
 ---
 
-## 🌟 What Makes This Plugin Special
-
-Unlike other storage plugins, Backpacks focuses on:
-
-1. **Simplicity** - One file, two commands, minimal config
-2. **Safety** - Instant saves mean zero data loss
-3. **Performance** - Lightweight and efficient
-4. **Code Quality** - Extensively commented for maintainability
-5. **User Experience** - Beautiful UI, clear messages, smooth workflow
-
-We believe plugins should be **easy to use**, **easy to admin**, and **easy to develop**. Backpacks delivers on all three.
-
----
-
-## 📊 Comparison
-
-| Feature | Backpacks | Other Plugins |
-|---------|-----------|---------------|
-| Individual storage files | ✅ | ❌ (single database) |
-| Instant saves | ✅ | ❌ (batched) |
-| Visual enchantment glow | ✅ | ⚠️ (some) |
-| Tab completion | ✅ | ⚠️ (some) |
-| Single-file codebase | ✅ | ❌ |
-| Extensive documentation | ✅ | ⚠️ (some) |
-| Zero dependencies | ✅ | ❌ |
-| Nested backpack prevention | ✅ | ❌ |
-
----
-
-## 🤝 Integration Examples
-
-### With Economy Plugins
-
-**EssentialsX Worth:**
-```yaml
-# worth.yml
-BARREL: 5000
-```
-
-**ShopGUI+:**
-```yaml
-items:
-  backpack:
-    commands:
-      - "backpack give backpack %player%"
-```
-
-### With Quest Plugins
-
-**Quests:**
-```yaml
-reward_commands:
-  - "backpack give backpack %player%"
-  - "backpack give doubler %player%"
-```
-
-### With Kit Plugins
-
-**EssentialsX Kits:**
-```
-/kit setitem backpack
-# Use /backpack give to create the item first
-```
-
----
-
 ## 📝 Changelog
 
+### Version 1.1.0
+- ✨ Added personal backpacks via /bp command
+- ✨ Added backpacks.use permission for personal backpacks
+- ✨ Personal backpacks stored separately from item backpacks
+- ✨ Help menu now shows permission-filtered commands
+
 ### Version 1.0.0 (Initial Release)
-- ✨ Backpack creation with 27-slot capacity
+- ✨ Item-based backpack creation with 27-slot capacity
 - ✨ Capacity doubler upgrade system (27 → 54 slots)
 - ✨ Right-click to open backpack GUI
 - ✨ Individual YAML storage per backpack
@@ -358,24 +342,6 @@ Custom license - See LICENSE file for details.
 - Minecraft Paper/Spigot API
 - Adventure API by KyoriPowered
 - Java 17
-
----
-
-## 📸 Screenshots
-
-### Standard Backpack
-![Backpack Item - Gold text "Backpack" with enchanted glow]
-
-### Upgraded Backpack
-![Backpack Item with "✦ UPGRADED ✦" badge]
-
-### Capacity Doubler
-![Paper item with aqua text "Backpack Capacity Doubler"]
-
-### Backpack GUI
-![Inventory GUI showing "Backpack (27 slots)" or "Backpack (54 slots)"]
-
-*Note: Add actual screenshots here*
 
 ---
 
